@@ -6,80 +6,37 @@ using System.Diagnostics;
 
 namespace WordleSharp
 {
-    public class AttemptedWords
-    {
-        private IEnumerable<string> Words { get; }
-
-        public AttemptedWords(IEnumerable<string> words)
-        {
-            Words = words;
-        }
-
-    }
-
-    public class WordleResult
-    {
-        public string StartWord;
-        public int Turns;
-        public AttemptedWords AttemptedWords;
-        public string Answer;
-
-        public WordleResult()
-        {
-
-        }
-
-        public WordleResult(string answer, int turns, IEnumerable<string> attemptedWords)
-        {
-            StartWord = attemptedWords.FirstOrDefault();
-            if (StartWord is null && turns == 1)
-            {
-                StartWord = answer;
-            }
-            Answer = answer;
-            Turns = turns;
-            AttemptedWords = new AttemptedWords(attemptedWords);
-        }
-
-    }
-
-    public interface INextWordCalculator
-    {
-        public IEnumerable<string> CalculateWord(IEnumerable<string> wordList);
-    }
-
     public class Wordle
     {
-        string[] _regexArray;
-        List<char> _globalExcluded;
-        string[] _positionExcluded;
-        string[] _possibles;
-        string[] _filtered;
-        IEnumerable<string> _sortedWords;
-        IEnumerable<string> _startWords;
-        int _turnCount;
-        bool _displayCountOnly;
-        int _threshold;
-        INextWordCalculator _calculator;
-        string _answer;
+        private string[] regexArray;
+        private List<char> globalExcluded;
+        private string[] positionExcluded;
+        private string[] possibles;
+        private string[] filtered;
+        private readonly IEnumerable<string> sortedWords;
+        private readonly IEnumerable<string> startWords;
+        private int turnCount;
+        public bool DisplayCountOnly;
+        private readonly int threshold;
+        private INextWordCalculator calculator;
+        private string knownAnswer;
 
 
         public Wordle(int threshold = 500)
         {
-            _threshold = threshold;
-            _sortedWords = LoadWordList();
-            Debug.Assert(_sortedWords.Count() > 1000);
-            _startWords = LoadStartWords();
+            this.threshold = threshold;
+            sortedWords = LoadWordList();
+            startWords = LoadStartWords();
             Reset();
         }
 
         public void Reset()
         {
-            _regexArray = new string[5];
-            _globalExcluded = new List<char>(21);
-            _positionExcluded = new string[5];
-            _possibles = new string[5];
-            _filtered = _sortedWords.ToArray();
+            regexArray = new string[5];
+            globalExcluded = new List<char>(21);
+            positionExcluded = new string[5];
+            possibles = new string[5];
+            filtered = sortedWords.ToArray();
         }
 
         public WordleResult AutoPlay(string startWord, string answer)
@@ -87,29 +44,36 @@ namespace WordleSharp
             Reset();
             string next = startWord;
             var attempts = new List<string>(8);
-            while (_filtered.Length > 1 && next != answer)
+            while (filtered.Length > 1 && next != answer)
             {
                 attempts.Add(next);
                 string scoredWord = ScoreWord(next, answer);
                 ProcessGuess(scoredWord);
-                // Play pessimistically - this sort order puts the answer last in the list, ensuring it's ony selected if it's the only word remaining.
-                // As this is hash code deterministic, the path to the solution might not always be the same with each run
-                next = GetBestNextWord(_calculator)
+                // Play pessimistically - this sort order puts the answer last in the list, ensuring it's ony selected
+                // if it's the only word remaining.
+                // As this is hash code deterministic, the path to the solution might not always be the same with each
+                // run
+                next = GetBestNextWord(calculator)
                     .OrderByDescending(x => Math.Abs(x.GetHashCode() - answer.GetHashCode()))
                     .First();
-                _turnCount++;
+                turnCount++;
             }
-            return new WordleResult(answer, _turnCount, attempts.ToArray());
+            return new WordleResult(answer, turnCount, attempts.ToArray());
         }
 
-        public WordleResult[] GetBestStartWord(string answer)
+        public IEnumerable<WordleResult> GetBestStartWord(string answer)
         {
-            return GetBestStartWord(answer, _startWords);
+            return GetBestStartWord(answer, startWords);
         }
 
-        public WordleResult[] GetBestStartWord(string answer, IEnumerable<string> startWords)
+        public IEnumerable<WordleResult> GetBestStartWord(string answer, IEnumerable<string> startWords)
         {
-            throw new NotImplementedException();
+            var results = new List<WordleResult>(startWords.Count() - 1);
+            results.AddRange(startWords
+                .Where(x => x != answer)
+                .Select(word => AutoPlay(word, answer)));
+            int minCount = results.Min(x => x.Turns);
+            return results.Where(x => x.Turns == minCount);
         }
 
         public WordleResult Analyse()
@@ -119,7 +83,8 @@ namespace WordleSharp
             Console.WriteLine("Wordle analysis");
             var attempts = new List<string>();
 
-            Console.WriteLine("Enter word. Letter followed by '1' means 'Correct letter, wrong location'. Followed by '2' means 'Right Letter, right Location'");
+            Console.WriteLine("Enter word. Letter followed by '1' means 'Correct letter, wrong location'");
+            Console.WriteLine("Followed by '2' means 'Right Letter, right Location'");
             do
             {
                 Console.Write("Word: ");
@@ -128,59 +93,58 @@ namespace WordleSharp
                 {
                     continue;
                 }
-                // If entry is a word followed by a question mark, respond with whether the word is valid according to the remaining word list
+                // If entry is a word followed by a question mark, respond with whether the word is valid according to
+                // the remaining word list
                 if (entry.LastIndexOf('?') == entry.Length -1)
                 {
-                    Console.WriteLine(_sortedWords.Any(x => x == entry.Substring(0, 5)));
+                    Console.WriteLine(sortedWords.Any(x => x == entry.Substring(0, 5)));
                     continue;
                 }
                 entry = ProcessGuess(entry);
 
-
-                var count = _filtered.Length;
+                int count = filtered.Length;
                 if (count == 1)
                 {
-                    if (_displayCountOnly)
+                    if (DisplayCountOnly)
                     {
                         Console.WriteLine("Single solution remaining");
-                        return new WordleResult("[unknown]", _turnCount, attempts.ToArray());
+                        return new WordleResult("[unknown]", turnCount, attempts.ToArray());
                     }
-                    Console.WriteLine($"Solved! Answer is: ({_filtered.First()})");
+                    Console.WriteLine($"Solved! Answer is: ({filtered.First()})");
                     if (entry.IndexOfAny("01".ToCharArray()) >= 0)
                     {
                         attempts.Add(CleanEntry(entry));
-                        _turnCount++;
+                        turnCount++;
                     }
-                    var wordleResult = new WordleResult(_filtered.First(), _turnCount, attempts.ToArray());
+                    var wordleResult = new WordleResult(
+                        filtered.First(), turnCount, attempts.ToArray());
                     return wordleResult;
                 }
                 attempts.Add(CleanEntry(entry));
 
                 Console.WriteLine($"List narrowed down to {count} words");
                 // As long as your start word isn't something daft like "lolly", this should be adequate.
-                if (count < _threshold && !_displayCountOnly)
+                if (count < threshold && !DisplayCountOnly)
                 {
-                    Console.WriteLine(string.Join(", ", _filtered));
-                    var bestScoringWords = GetBestNextWord(_calculator);
+                    Console.WriteLine(string.Join(", ", filtered));
+                    var bestScoringWords = GetBestNextWord(calculator);
                     Console.WriteLine($"Best word(s) to try next: {string.Join(",", bestScoringWords)}");
                 }
-                _turnCount++;
+                turnCount++;
             } while (!string.IsNullOrWhiteSpace(entry));
 
-
-            return new WordleResult("[unknown]", _turnCount, attempts.ToArray());
-            
+            return new WordleResult("[unknown]", turnCount, attempts.ToArray());
         }
 
-        public string ProcessGuess(string guess)
+        private string ProcessGuess(string guess)
         {
             // Two words separated by a comma mean "score first, assuming second word is answer
-            if (!string.IsNullOrEmpty(_answer) || Regex.IsMatch(guess, "[a-z]{5},[a-z]{5}"))
+            if (!string.IsNullOrEmpty(knownAnswer) || Regex.IsMatch(guess, "[a-z]{5},[a-z]{5}"))
             {
-                var split = guess.Split(',');
+                string[] split = guess.Split(',');
                 guess = split[0];
-                _answer ??= split[1];
-                guess = ScoreWord(guess, _answer);
+                knownAnswer ??= split[1];
+                guess = ScoreWord(guess, knownAnswer);
             }
             // Word followed by exclamation mark means "correct answer"
             if (Regex.IsMatch(guess, "[a-z]{5}!"))
@@ -195,82 +159,88 @@ namespace WordleSharp
             var loopPossible = new char[5];
             for (var i = 0; i < 5; i++)
             {
-                var substring = guess.Substring(2 * i, 2);
+                string substring = guess.Substring(2 * i, 2);
 
                 switch (int.Parse(substring[1].ToString()))
                 {
                     case 0:
+                    {
+                        // Nicety - if you've already said that the letter is a 2, no need to say again
+                        if (Regex.IsMatch(regexArray[i] ?? string.Empty, "^[a-z]$"))
                         {
-                            // Nicety - if you've already said that the letter is a 2, no need to say again
-                            if (Regex.IsMatch(_regexArray[i] ?? string.Empty, "^[a-z]$"))
-                            {
-                                var guessArray = guess.ToCharArray();
-                                guessArray[2 * i + 1] = '2';
-                                guess = new string(guessArray);
-                                continue;
-                            }
-                            loopExclude[i] = substring[0];
+                            char[] guessArray = guess.ToCharArray();
+                            guessArray[2 * i + 1] = '2';
+                            guess = new string(guessArray);
+                            continue;
+                        }
+                        loopExclude[i] = substring[0];
 
-                            break;
-                        }
+                        break;
+                    }
                     case 1:
-                        {
-                            loopPossible[i] = substring[0];
-                            break;
-                        }
+                    {
+                        loopPossible[i] = substring[0];
+                        break;
+                    }
                     case 2:
-                        {
-                            _regexArray[i] = substring[0].ToString();
-                            break;
-                        }
+                    {
+                        regexArray[i] = substring[0].ToString();
+                        break;
+                    }
                     default:
-                        {
-                            throw new InvalidOperationException($"Invalid substring: {substring[1]}");
-                        }
+                    {
+                        throw new InvalidOperationException($"Invalid substring: {substring[1]}");
+                    }
                 }
             }
 
             // This approach overcomes the double letter in guess, but not in answer scenario.
             for (var i = 0; i < 5; i++)
             {
-                _positionExcluded[i] += loopExclude[i];
-                _possibles[i] += loopPossible[i];
+                positionExcluded[i] += loopExclude[i];
+                possibles[i] += loopPossible[i];
             }
-            var globalToAdd = Enumerable.Except(loopExclude, loopPossible);
-            _globalExcluded.AddRange(globalToAdd);
+            var globalToAdd = loopExclude.Except(loopPossible);
+            globalExcluded.AddRange(globalToAdd);
 
             for (var i = 0; i < 5; i++)
             {
-                if (Regex.IsMatch(_regexArray[i] ?? String.Empty, "^[a-z]$")) { continue; }
+                if (Regex.IsMatch(regexArray[i] ?? string.Empty, "^[a-z]$")) { continue; }
 
-                var excluded = (_positionExcluded[i] + _possibles[i] + new string(_globalExcluded.ToArray()))
+                var excluded = (
+                        positionExcluded[i] +
+                        possibles[i] +
+                        new string(globalExcluded.ToArray()))
                     .ToCharArray()
                     .Distinct()
                     .Where(c => Regex.IsMatch(c.ToString(), "[a-z]"));
-                _regexArray[i] = $"[^{string.Join("", excluded)}]";
+                regexArray[i] = $"[^{string.Join("", excluded)}]";
             }
 
-            _filtered = _filtered
-                .Where(word => Regex.IsMatch(word, string.Join("", _regexArray)))
+            filtered = filtered
+                .Where(word => Regex.IsMatch(word, string.Join("", regexArray)))
                 .ToArray();
 
-            foreach (var letter in string.Join("", _possibles).ToCharArray().Where(c => Regex.IsMatch(c.ToString(), "[a-z]") ).Distinct() )
+            foreach (char letter in 
+                        string.Join("", possibles)
+                         .ToCharArray()
+                         .Where(c => Regex.IsMatch(c.ToString(), "[a-z]") )
+                         .Distinct() )
             {
-                _filtered = _filtered.Where(f => Regex.IsMatch(f, letter.ToString())).ToArray();
+                filtered = filtered.Where(f => Regex.IsMatch(f, letter.ToString())).ToArray();
             }
             return guess;
         }
-        
 
-        public IEnumerable<string> GetBestNextWord(INextWordCalculator calculator)
+        private IEnumerable<string> GetBestNextWord(INextWordCalculator calc)
         {
-            return calculator.CalculateWord(_filtered);
+            return calc.CalculateWord(filtered);
         }
 
         public static string ScoreWord(string guess, string target)
         {
-            var targetArray = target.ToCharArray();
-            var guessArray = guess.ToCharArray();
+            char[] targetArray = target.ToCharArray();
+            char[] guessArray = guess.ToCharArray();
             var result = new int[5];
             var sb = new System.Text.StringBuilder(10);
             for (var i = 0; i < 5; i++)
@@ -288,12 +258,15 @@ namespace WordleSharp
                 if (result[i] == 2) { continue; }
 
                 // then, if the answer contains the letter, mark it yellow and prevent it from being counted again.
-                // This overcomes the issue if the guess contains repeated letters, but the answer doesn't, only the first is marked yellow
+                // This overcomes the issue if the guess contains repeated letters, but the answer doesn't,
+                // only the first is marked yellow
                 if (targetArray.Any(x => x == guessArray[i]))
                 {
                     result[i] = 1;
-                    Regex pattern = new Regex(guessArray[i].ToString());
-                    targetArray = pattern.Replace(string.Join("",targetArray), "?", 1).ToCharArray();
+                    var pattern = new Regex(guessArray[i].ToString());
+                    targetArray = pattern
+                        .Replace(string.Join("",targetArray), "?", 1)
+                        .ToCharArray();
                 }
                 else
                 {
@@ -307,59 +280,27 @@ namespace WordleSharp
             return sb.ToString();
         }
 
-        public static string CleanEntry(string entry)
+        private static string CleanEntry(string entry)
         {
             var rx = new Regex("[^a-z]");
             return rx.Replace(entry, "");
         }
 
-        public static IEnumerable<string> LoadWordList()
+        private static IEnumerable<string> LoadWordList()
         {
-            var text = System.IO.File.ReadAllLines(".\\WordLists\\Answers.txt");
+            string[] text = System.IO.File.ReadAllLines(".\\WordLists\\Answers.txt");
             return text;
         }
 
-        public static IEnumerable<string> LoadStartWords()
+        private static IEnumerable<string> LoadStartWords()
         {
-            var text = System.IO.File.ReadAllLines(".\\WordLists\\StartWords.txt");
+            string[] text = System.IO.File.ReadAllLines(".\\WordLists\\StartWords.txt");
             return text;
         }
 
         public void SetNextWordCalculator(INextWordCalculator calc)
         {
-            _calculator = calc;
-        }
-    }
-}
-
-namespace WordleSharp.Calculators
-{
-    public class LetterFrequencyCalculator : INextWordCalculator
-    {
-        public IEnumerable<string> CalculateWord(IEnumerable<string> wordList)
-        {
-            if (!wordList.Any())
-            {
-                Console.WriteLine("Error! Word list contained no entries!");
-                return Enumerable.Empty<string>();
-            }
-            var dict = string.Join("", wordList)
-                .ToCharArray()
-                .GroupBy(x => x)
-                .ToDictionary(k => k.Key, v => v.Count());
-            var scores = new Dictionary<string, int>();
-            foreach (string word in wordList)
-            {
-                int sum = 0;
-                foreach (char letter in word.ToCharArray().Distinct())
-                {
-                    sum += dict[letter];
-                }
-                scores[word] = sum;
-            }
-
-            var lowestScore = scores.Max(x => x.Value);
-            return scores.Where(x => x.Value == lowestScore).Select(s => s.Key);
+            calculator = calc;
         }
     }
 }
