@@ -10,7 +10,7 @@ namespace WordleSharp.Calculators
         {
             if (!wordList.Any())
             {
-                Console.WriteLine("Error! Word list contained no entries!");
+                Console.WriteLine($"{GetType().Name} Error! Word list contained no entries!");
                 return Enumerable.Empty<string>();
             }
             var dict = string.Join("", wordList)
@@ -20,15 +20,14 @@ namespace WordleSharp.Calculators
             var scores = new Dictionary<string, int>();
             foreach (string word in wordList)
             {
-                int sum = 0;
-                foreach (char letter in word.ToCharArray().Distinct())
-                {
-                    sum += dict[letter];
-                }
+                int sum = word
+                    .ToCharArray()
+                    .Distinct()
+                    .Sum(letter => dict[letter]);
                 scores[word] = sum;
             }
 
-            var lowestScore = scores.Max(x => x.Value);
+            int lowestScore = scores.Max(x => x.Value);
             return scores.Where(x => x.Value == lowestScore).Select(s => s.Key);
         }
     }

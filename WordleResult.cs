@@ -26,6 +26,5 @@ namespace WordleSharp
             Turns = turns;
             AttemptedWords = new AttemptedWords(attemptedWords);
         }
-
     }
 }
