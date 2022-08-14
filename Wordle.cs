@@ -3,6 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using WordleSharp.Calculators;
 
 namespace WordleSharp
 {
