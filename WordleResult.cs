@@ -3,6 +3,9 @@ using System.Linq;
 
 namespace WordleSharp
 {
+    /// <summary>
+    /// The result of a game played manually or automatically
+    /// </summary>
     public class WordleResult
     {
         public string StartWord;
@@ -12,7 +15,6 @@ namespace WordleSharp
 
         public WordleResult()
         {
-
         }
 
         public WordleResult(string answer, int turns, IEnumerable<string> attemptedWords)

@@ -1,21 +1,26 @@
 ﻿using System;
 using System.Linq;
+using System.IO;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using WordleSharp.Calculators;
+using System.Threading.Tasks;
 
 namespace WordleSharp
 {
+    /// <summary>
+    /// Main game engine
+    /// </summary>
     public class Wordle
     {
-        private string[] regexArray;
-        private List<char> globalExcluded;
-        private string[] positionExcluded;
-        private string[] possibles;
-        private string[] filtered;
+        internal string[] regexArray;
+        internal List<char> globalExcluded;
+        internal string[] positionExcluded;
+        internal string[] possibles;
+        internal string[] filtered;
         private readonly IEnumerable<string> sortedWords;
-        private readonly IEnumerable<string> startWords;
+        internal readonly IEnumerable<string> startWords;
         private int turnCount;
         public bool DisplayCountOnly;
         private readonly int threshold;
@@ -38,6 +43,7 @@ namespace WordleSharp
             positionExcluded = new string[5];
             possibles = new string[5];
             filtered = sortedWords.ToArray();
+            turnCount = 1;
         }
 
         public WordleResult AutoPlay(string startWord, string answer)
@@ -77,7 +83,7 @@ namespace WordleSharp
             return results.Where(x => x.Turns == minCount);
         }
 
-        public WordleResult Analyse()
+        public async Task<WordleResult> Analyse()
         {
             Reset();
             var entry = "";
@@ -98,7 +104,7 @@ namespace WordleSharp
                 // the remaining word list
                 if (entry.LastIndexOf('?') == entry.Length -1)
                 {
-                    Console.WriteLine(sortedWords.Any(x => x == entry.Substring(0, 5)));
+                    Console.WriteLine(filtered.Any(x => x == entry[..5]));
                     continue;
                 }
                 entry = ProcessGuess(entry);
@@ -111,7 +117,7 @@ namespace WordleSharp
                         Console.WriteLine("Single solution remaining");
                         return new WordleResult("[unknown]", turnCount, attempts.ToArray());
                     }
-                    Console.WriteLine($"Solved! Answer is: ({filtered.First()})");
+                    Console.WriteLine($"Solved! Answer is: {filtered.First()}");
                     if (entry.IndexOfAny("01".ToCharArray()) >= 0)
                     {
                         attempts.Add(CleanEntry(entry));
@@ -128,7 +134,7 @@ namespace WordleSharp
                 if (count < threshold && !DisplayCountOnly)
                 {
                     Console.WriteLine(string.Join(", ", filtered));
-                    var bestScoringWords = GetBestNextWord(calculator);
+                    var bestScoringWords = await GetBestNextWordAsync(calculator);
                     Console.WriteLine($"Best word(s) to try next: {string.Join(",", bestScoringWords)}");
                 }
                 turnCount++;
@@ -137,6 +143,8 @@ namespace WordleSharp
             return new WordleResult("[unknown]", turnCount, attempts.ToArray());
         }
 
+        
+        
         private string ProcessGuess(string guess)
         {
             // Two words separated by a comma mean "score first, assuming second word is answer
@@ -228,14 +236,19 @@ namespace WordleSharp
                          .Where(c => Regex.IsMatch(c.ToString(), "[a-z]") )
                          .Distinct() )
             {
-                filtered = filtered.Where(f => Regex.IsMatch(f, letter.ToString())).ToArray();
+                filtered = filtered.Where(f => f.Contains(letter)).ToArray();
             }
             return guess;
         }
 
         private IEnumerable<string> GetBestNextWord(INextWordCalculator calc)
         {
-            return calc.CalculateWord(filtered);
+            return calc.CalculateWord(this);
+        }
+
+        private Task<IEnumerable<string>> GetBestNextWordAsync(INextWordCalculator calc)
+        {
+            return calc.CalculateWordAsync(this);
         }
 
         public static string ScoreWord(string guess, string target)
@@ -289,19 +302,40 @@ namespace WordleSharp
 
         private static IEnumerable<string> LoadWordList()
         {
-            string[] text = System.IO.File.ReadAllLines(".\\WordLists\\Answers.txt");
+            string currentPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            string[] text = File.ReadAllLines(Path.Join(currentPath, "\\WordLists\\Answers.txt"));
             return text;
         }
 
         private static IEnumerable<string> LoadStartWords()
         {
-            string[] text = System.IO.File.ReadAllLines(".\\WordLists\\StartWords.txt");
+            string currentPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            string[] text = File.ReadAllLines(Path.Join(currentPath, "\\WordLists\\StartWords.txt"));
             return text;
         }
 
         public void SetNextWordCalculator(INextWordCalculator calc)
         {
             calculator = calc;
+        }
+
+        public string[] GetWordsContainingLetter(string letter)
+        {
+            var dic = new Dictionary<string, int>();
+            foreach (string word in sortedWords)
+            {
+                int sum = 0;
+                foreach (char c in word.ToCharArray().Distinct())
+                {
+                    if (letter.Contains(c)) sum++;
+                }
+                dic.Add(word, sum);
+            }
+            int max = dic.Values.Max();
+            return dic
+                .Where(kvp => kvp.Value == max)
+                .Select(kvp => kvp.Key)
+                .ToArray();
         }
     }
 }
