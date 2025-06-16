@@ -1,5 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using WordleSharp.Calculators;
+using WordleSharp.ProgressReporting;
 
 // Added for CancellationTokenSource
 
@@ -212,11 +213,12 @@ public class Wordle
             string substring = guess.Substring(2 * i, 2);
 
             switch (int.Parse(substring[1].ToString()))
-            {
-                case 0:
+            {                case 0:
                 {
                     // Nicety - if you've already said that the letter is a 2, no need to say again
-                    if (Regex.IsMatch(regexArray[i] ?? string.Empty, "^[a-z]$"))
+                    // BUT only if it's the same letter - in non-hard mode, different letters can be tried
+                    if (Regex.IsMatch(regexArray[i] ?? string.Empty, "^[a-z]$") && 
+                        regexArray[i] == substring[0].ToString())
                     {
                         char[] guessArray = guess.ToCharArray();
                         guessArray[2 * i + 1] = '2';
@@ -285,6 +287,11 @@ public class Wordle
     private IEnumerable<string> GetBestNextWord(INextWordCalculator calc)
     {
         return calc.CalculateWord(this);
+    }
+
+    private Task<IEnumerable<string>> GetBestNextWordAsync(INextWordCalculator calc, IProgressUpdater progressUpdater)
+    {
+        return calc.CalculateWordAsync(this, progressUpdater);
     }
 
     private Task<IEnumerable<string>> GetBestNextWordAsync(INextWordCalculator calc)
@@ -383,5 +390,72 @@ public class Wordle
             .Where(kvp => kvp.Value == max)
             .Select(kvp => kvp.Key)
             .ToArray();
+    }
+
+    public async Task<WordleResult> Analyse(IProgressUpdater? progressUpdater = null)
+    {
+        Reset();
+        var entry = "";
+        Console.WriteLine("Wordle analysis");
+        var attempts = new List<string>();
+
+        Console.WriteLine("Enter word. Letter followed by \'1\' means \'Correct letter, wrong location\'");
+        Console.WriteLine("Followed by \'2\' means \'Right Letter, right Location\'");
+        do
+        {
+            Console.Write("Word: ");
+            entry = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(entry))
+            {
+                continue;
+            }
+            // If entry is a word followed by a question mark, respond with whether the word is valid according to
+            // the remaining word list
+            if (entry.LastIndexOf('?') == entry.Length -1)
+            {
+                Console.WriteLine(filtered.Any(x => x == entry[..5]));
+                continue;
+            }
+            entry = ProcessGuess(entry);
+
+            int count = filtered.Length;
+            if (count == 1)
+            {
+                if (DisplayCountOnly)
+                {
+                    Console.WriteLine("Single solution remaining");
+                    return new WordleResult("[unknown]", turnCount, attempts.ToArray());
+                }
+                Console.WriteLine($"Solved! Answer is: {filtered.First()}");
+                if (entry.IndexOfAny("01".ToCharArray()) >= 0)
+                {
+                    attempts.Add(CleanEntry(entry));
+                    turnCount++;
+                }
+                var wordleResult = new WordleResult(
+                    filtered.First(), turnCount, attempts.ToArray());
+                return wordleResult;
+            }
+            attempts.Add(CleanEntry(entry));
+
+            Console.WriteLine($"List narrowed down to {count} words");
+            // As long as your start word isn\'t something daft like "lolly", this should be adequate.
+            if (count < threshold && !DisplayCountOnly)
+            {
+                Console.WriteLine(string.Join(", ", filtered));
+                    
+                // Use the spinner here, or progress updater if provided
+                var bestScoringWords = progressUpdater != null 
+                    ? await GetBestNextWordAsync(calculator, progressUpdater)
+                    : await RunTaskWithSpinner(
+                        () => GetBestNextWordAsync(calculator),
+                        "Calculating best next word..."
+                    );
+                Console.WriteLine($"Best word(s) to try next: {string.Join(",", bestScoringWords)}");
+            }
+            turnCount++;
+        } while (!string.IsNullOrWhiteSpace(entry));
+
+        return new WordleResult("[unknown]", turnCount, attempts.ToArray());
     }
 }

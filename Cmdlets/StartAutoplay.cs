@@ -1,5 +1,6 @@
 using System.Management.Automation;
 using WordleSharp.Calculators;
+using WordleSharp.ProgressReporting;
 
 namespace WordleSharp.Cmdlets;
 
