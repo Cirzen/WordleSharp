@@ -14,9 +14,10 @@
     <PackageReference Include="System.Management.Automation" Version="7.2.6" />
     <PackageReference Include="ConsoleTables" Version="2.4.2" />
   </ItemGroup>
-
   <ItemGroup>
     <None Update="WordleSharp.psd1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>    <None Update="en-US\WordleSharp.dll-Help.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="WordLists\Answers.txt">

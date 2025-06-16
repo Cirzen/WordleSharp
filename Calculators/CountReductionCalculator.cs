@@ -18,7 +18,6 @@ internal class CountReductionCalculator : INextWordCalculator
         return CalculateWordAsync(wordle, null).GetAwaiter().GetResult();
     }
 
-    // Updated signature to accept IProgressUpdater
     public async Task<IEnumerable<string>> CalculateWordAsync(Wordle wordle, IProgressUpdater? progressUpdater = null)
     {
         // Heuristic for very small filtered lists - return them directly if 1 or 2 words remain.
@@ -350,22 +349,15 @@ internal class CountReductionCalculator : INextWordCalculator
         string[] wordsToFilter,
         FilteringCriteria baseCriteria)
     {
-        // 1. Score guess against hypothetical answer
         ScoredLetter[] scoredGuess = ScoreGuessAgainstAnswer(guess, hypotheticalAnswer);
 
-        // 2. Create a new criteria instance by cloning the base criteria for this specific hypothetical path
         var derivedCriteria = new FilteringCriteria(baseCriteria);
 
-        // 3. Update this new criteria based on the scored guess
         UpdateCriteriaFromScoredGuess(guess, scoredGuess, derivedCriteria);
 
-        // 4. Filter words and count
         int count = 0;
         foreach (string word in wordsToFilter)
         {
-            // WordMatchesCriteriaManual is an instance method, so it doesn't need the class name qualifier if called from another instance method.
-            // However, ProcessHypotheticalInternal is static, so WordMatchesCriteriaManual would also need to be static
-            // or called on an instance. Let's make WordMatchesCriteriaManual static for consistency here, as it doesn't rely on instance state of CountReductionCalculator.
             if (WordMatchesCriteriaManual(word, derivedCriteria))
             {
                 count++;
@@ -374,7 +366,6 @@ internal class CountReductionCalculator : INextWordCalculator
         return count;
     }
 
-    // Made static
     internal static bool WordMatchesCriteriaManual(string word, FilteringCriteria criteria) 
     {
         // Check 1: Regex match for fixed letters (greens) and position-specific exclusions (from yellows or greys)

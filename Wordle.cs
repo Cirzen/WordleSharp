@@ -15,9 +15,9 @@ public class Wordle
     internal string[] positionExcluded;
     internal string[] possibles;
     internal string[] filtered;
-    internal IEnumerable<string> sortedWords; // Made internal, removed readonly
-    internal IEnumerable<string> startWords; // Made internal, removed readonly
-    internal int turnCount; // Made internal
+    internal IEnumerable<string> sortedWords;
+    internal IEnumerable<string> startWords;
+    internal int turnCount;
     public bool DisplayCountOnly;
     private readonly int threshold;
     private INextWordCalculator calculator;
@@ -158,8 +158,8 @@ public class Wordle
             {
                 Console.Write(spinnerChars[spinnerIndex]);
                 spinnerIndex = (spinnerIndex + 1) % spinnerChars.Length;
-                await Task.Delay(150, cts.Token).ContinueWith(_ => { }); // ContinueWith to ignore TaskCanceledException
-                if (!cts.Token.IsCancellationRequested) // Check again before writing 
+                await Task.Delay(150, cts.Token).ContinueWith(_ => { });
+                if (!cts.Token.IsCancellationRequested)
                 {
                     Console.Write('\r'); // Return to the beginning of the line
                     Console.Write(message + " "); // Redraw message in case it was overwritten
@@ -188,7 +188,7 @@ public class Wordle
 
     private string ProcessGuess(string guess)
     {
-        // Two words separated by a comma mean "score first, assuming second word is answer
+        // Two words separated by a comma mean "score first, assuming second word is answer"
         if (!string.IsNullOrEmpty(knownAnswer) || Regex.IsMatch(guess, "[a-z]{5},[a-z]{5}"))
         {
             string[] split = guess.Split(',');
@@ -216,7 +216,6 @@ public class Wordle
                 case 0:
                 {
                     // Nicety - if you've already said that the letter is a 2, no need to say again
-                        
                     if (Regex.IsMatch(regexArray[i] ?? string.Empty, "^[a-z]$"))
                     {
                         char[] guessArray = guess.ToCharArray();

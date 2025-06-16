@@ -1,0 +1,685 @@
+<?xml version="1.0" encoding="utf-8"?>
+<helpItems schema="maml" xmlns="http://msh">
+  <command:command xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" xmlns:MSHelp="http://msdn.microsoft.com/mshelp">
+    <command:details>
+      <command:name>Start-WordleAnalysis</command:name>
+      <command:verb>Start</command:verb>
+      <command:noun>WordleAnalysis</command:noun>
+      <maml:description>
+        <maml:para>Performs a comprehensive Wordle game analysis using advanced algorithms to find optimal starting words and strategies.</maml:para>
+      </maml:description>
+    </command:details>    <maml:description>
+      <maml:para>The Start-WordleAnalysis cmdlet runs an interactive Wordle analysis using sophisticated algorithms to determine the best starting word and analyze game outcomes. It supports multiple calculation methods and can provide detailed analysis including autoplay scenarios and best starting word recommendations.</maml:para>
+      <maml:para>INPUT FORMAT: When running interactively, enter words with feedback numbers: 0=gray (not in word), 1=yellow (right letter, wrong position), 2=green (right letter, right position). The system automatically adds '0' to letters without specifiers. If a letter has been previously marked as "green" with a 2, it does not need to be repeated on subsequent entries.</maml:para>
+      <maml:para>SPECIAL INPUTS: word? (check if word is valid), word,answer (score guess against known answer), word! (declare correct answer).</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Start-WordleAnalysis</maml:name>
+        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+          <maml:name>CountOnly</maml:name>
+          <maml:description>
+            <maml:para>When specified, displays only count information without detailed analysis.</maml:para>
+          </maml:description>
+          <dev:type>
+            <maml:name>SwitchParameter</maml:name>
+            <maml:uri />
+          </dev:type>
+          <dev:defaultValue>False</dev:defaultValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+          <maml:name>Threshold</maml:name>
+          <maml:description>
+            <maml:para>Sets the threshold value for analysis processing. Must be between 1 and 2147483647.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">Int32</command:parameterValue>
+          <dev:type>
+            <maml:name>Int32</maml:name>
+            <maml:uri />
+          </dev:type>
+          <dev:defaultValue>500</dev:defaultValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+          <maml:name>Calculator</maml:name>
+          <maml:description>
+            <maml:para>Specifies which calculation algorithm to use for word analysis. CountReduction uses advanced reduction analysis, while LetterFrequency uses letter frequency scoring.</maml:para>
+          </maml:description>
+          <command:parameterValueGroup>
+            <command:parameterValue required="false" command:variableLength="false">CountReduction</command:parameterValue>
+            <command:parameterValue required="false" command:variableLength="false">LetterFrequency</command:parameterValue>
+          </command:parameterValueGroup>
+          <command:parameterValue required="true" variableLength="false">CalculatorType</command:parameterValue>
+          <dev:type>
+            <maml:name>CalculatorType</maml:name>
+            <maml:uri />
+          </dev:type>
+          <dev:defaultValue>CountReduction</dev:defaultValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+          <maml:name>MaxDegreeOfParallelism</maml:name>
+          <maml:description>
+            <maml:para>Controls the maximum number of parallel threads used by the CountReduction calculator. This parameter has no effect on the LetterFrequency calculator.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">Int32</command:parameterValue>
+          <dev:type>
+            <maml:name>Int32</maml:name>
+            <maml:uri />
+          </dev:type>
+          <dev:defaultValue>Environment.ProcessorCount</dev:defaultValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+        <maml:name>CountOnly</maml:name>
+        <maml:description>
+          <maml:para>When specified, displays only count information without running the full analysis including autoplay and best start word calculations.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="false">SwitchParameter</command:parameterValue>
+        <dev:type>
+          <maml:name>SwitchParameter</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>False</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+        <maml:name>Threshold</maml:name>
+        <maml:description>
+          <maml:para>Sets the threshold value used in analysis processing. This affects the depth and scope of the analysis performed.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>500</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+        <maml:name>Calculator</maml:name>
+        <maml:description>
+          <maml:para>Specifies which calculation algorithm to use for determining the best next word choices. CountReduction uses an algorithm that evaluates how much each guess reduces the remaining possibilities. LetterFrequency uses letter frequency analysis to score words.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">CalculatorType</command:parameterValue>
+        <dev:type>
+          <maml:name>CalculatorType</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>CountReduction</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+        <maml:name>MaxDegreeOfParallelism</maml:name>
+        <maml:description>
+          <maml:para>Controls the maximum number of parallel threads used by the CountReduction calculator. Lower values use less CPU but take longer. Higher values use more CPU cores for faster processing. Only applies when Calculator is CountReduction.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>Environment.ProcessorCount</dev:defaultValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>None</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>This cmdlet does not accept pipeline input.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>WordleResult</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns a WordleResult object containing analysis results including the optimal starting word, number of turns, attempted words, and the answer.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para>The CountReduction calculator can be computationally intensive for large word lists. Consider using the MaxDegreeOfParallelism parameter to control resource usage.</maml:para>
+      </maml:alert>
+    </maml:alertSet>    <command:examples>
+      <command:example>
+        <maml:title>Example 1: Basic Wordle Analysis</maml:title>
+        <dev:code>PS C:\&gt; Start-WordleAnalysis</dev:code>
+        <dev:remarks>
+          <maml:para>Runs a complete Wordle analysis using the default CountReduction calculator with default settings.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 2: Interactive Input Format</maml:title>
+        <dev:code>PS C:\&gt; Start-WordleAnalysis
+Word: arose
+a0r1o0s2e0
+# Alternative shorthand (same result):
+Word: ar1os2e</dev:code>
+        <dev:remarks>
+          <maml:para>Shows interactive input format: letters followed by 0 (gray), 1 (yellow), or 2 (green). System adds '0' to unspecified letters automatically.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 3: Special Input Commands</maml:title>
+        <dev:code>PS C:\&gt; Start-WordleAnalysis
+Word: about?
+True
+Word: arose,about
+a0r1o0s0e0
+Word: heart!
+Solved! Answer is: heart</dev:code>
+        <dev:remarks>
+          <maml:para>Demonstrates special inputs: word? checks validity, word,answer scores against known answer, word! declares correct solution.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 4: Count-only Analysis with Letter Frequency</maml:title>
+        <dev:code>PS C:\&gt; Start-WordleAnalysis -Calculator LetterFrequency -CountOnly</dev:code>
+        <dev:remarks>
+          <maml:para>Performs analysis using the LetterFrequency calculator and displays only count information without autoplay details.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 5: Controlled Parallelism</maml:title>
+        <dev:code>PS C:\&gt; Start-WordleAnalysis -Calculator CountReduction -MaxDegreeOfParallelism 4 -Threshold 1000</dev:code>
+        <dev:remarks>
+          <maml:para>Runs analysis with the CountReduction calculator using maximum 4 parallel threads and a threshold of 1000.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Start-Autoplay</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>Get-BestStartWord</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+
+  <command:command xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" xmlns:MSHelp="http://msdn.microsoft.com/mshelp">
+    <command:details>
+      <command:name>Start-Autoplay</command:name>
+      <command:verb>Start</command:verb>
+      <command:noun>Autoplay</command:noun>
+      <maml:description>
+        <maml:para>Automatically plays a Wordle game from a specified starting word to a target answer.</maml:para>
+      </maml:description>
+    </command:details>
+    <maml:description>
+      <maml:para>The Start-Autoplay cmdlet simulates playing a Wordle game automatically, starting with a specified word and attempting to reach a target answer. It uses a controllable algorithms to select the best subsequent guesses and reports the complete game sequence.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Start-Autoplay</maml:name>
+        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="0" aliases="none">
+          <maml:name>StartWord</maml:name>
+          <maml:description>
+            <maml:para>The initial word to start the Wordle game with.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+          <dev:type>
+            <maml:name>String</maml:name>
+            <maml:uri />
+          </dev:type>
+        </command:parameter>
+        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="1" aliases="none">
+          <maml:name>Answer</maml:name>
+          <maml:description>
+            <maml:para>The target answer word that the game should reach.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+          <dev:type>
+            <maml:name>String</maml:name>
+            <maml:uri />
+          </dev:type>
+        </command:parameter>
+        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+          <maml:name>Calculator</maml:name>
+          <maml:description>
+            <maml:para>Specifies which calculation algorithm to use for selecting subsequent guesses.</maml:para>
+          </maml:description>
+          <command:parameterValueGroup>
+            <command:parameterValue required="false" command:variableLength="false">CountReduction</command:parameterValue>
+            <command:parameterValue required="false" command:variableLength="false">LetterFrequency</command:parameterValue>
+          </command:parameterValueGroup>
+          <command:parameterValue required="true" variableLength="false">CalculatorType</command:parameterValue>
+          <dev:type>
+            <maml:name>CalculatorType</maml:name>
+            <maml:uri />
+          </dev:type>
+          <dev:defaultValue>CountReduction</dev:defaultValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+          <maml:name>MaxDegreeOfParallelism</maml:name>
+          <maml:description>
+            <maml:para>Controls the maximum number of parallel threads used by the CountReduction calculator.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">Int32</command:parameterValue>
+          <dev:type>
+            <maml:name>Int32</maml:name>
+            <maml:uri />
+          </dev:type>
+          <dev:defaultValue>Environment.ProcessorCount</dev:defaultValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="0" aliases="none">
+        <maml:name>StartWord</maml:name>
+        <maml:description>
+          <maml:para>The initial five-letter word to start the Wordle game simulation with. This word will be used as the first guess in the automated game sequence.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+      <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="1" aliases="none">
+        <maml:name>Answer</maml:name>
+        <maml:description>
+          <maml:para>The target five-letter word that represents the correct answer for the Wordle game. The autoplay will attempt to reach this word through optimal guessing.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+        <maml:name>Calculator</maml:name>
+        <maml:description>
+          <maml:para>Specifies which calculation algorithm to use for selecting the best subsequent guesses during autoplay. CountReduction uses advanced reduction analysis, while LetterFrequency uses letter frequency scoring.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">CalculatorType</command:parameterValue>
+        <dev:type>
+          <maml:name>CalculatorType</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>CountReduction</dev:defaultValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+        <maml:name>MaxDegreeOfParallelism</maml:name>
+        <maml:description>
+          <maml:para>Controls the maximum number of parallel threads used by the CountReduction calculator during autoplay. Only applies when Calculator is CountReduction.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">Int32</command:parameterValue>
+        <dev:type>
+          <maml:name>Int32</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>Environment.ProcessorCount</dev:defaultValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>None</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>This cmdlet does not accept pipeline input.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>System.Object</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns the result of the automated Wordle game, including the sequence of guesses and final outcome.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <command:examples>
+      <command:example>
+        <maml:title>Example 1: Basic Autoplay</maml:title>
+        <dev:code>PS C:\&gt; Start-Autoplay "slate" "crane"</dev:code>
+        <dev:remarks>
+          <maml:para>Automatically plays a Wordle game starting with "slate" and trying to reach "crane" using the default CountReduction calculator.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 2: Autoplay with Letter Frequency Calculator</maml:title>
+        <dev:code>PS C:\&gt; Start-Autoplay "audio" "house" -Calculator LetterFrequency</dev:code>
+        <dev:remarks>
+          <maml:para>Plays an automated game from "audio" to "house" using the LetterFrequency calculation algorithm.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 3: Autoplay with Controlled Parallelism</maml:title>
+        <dev:code>PS C:\&gt; Start-Autoplay "stare" "light" -Calculator CountReduction -MaxDegreeOfParallelism 2</dev:code>
+        <dev:remarks>
+          <maml:para>Runs autoplay with the CountReduction calculator using maximum 2 parallel threads for processing.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Start-WordleAnalysis</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>Get-WordScore</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+
+  <command:command xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" xmlns:MSHelp="http://msdn.microsoft.com/mshelp">
+    <command:details>
+      <command:name>Get-WordScore</command:name>
+      <command:verb>Get</command:verb>
+      <command:noun>WordScore</command:noun>
+      <maml:description>
+        <maml:para>Calculates the Wordle score for a guess against a target answer.</maml:para>
+      </maml:description>
+    </command:details>
+    <maml:description>
+      <maml:para>The Get-WordScore cmdlet compares a guessed word against the correct answer and returns the Wordle-style scoring (Green for correct position, Yellow for correct letter in wrong position, Grey for letters not in the answer).</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Get-WordScore</maml:name>
+        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="0" aliases="none">
+          <maml:name>Guess</maml:name>
+          <maml:description>
+            <maml:para>The guessed word to score.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+          <dev:type>
+            <maml:name>String</maml:name>
+            <maml:uri />
+          </dev:type>
+        </command:parameter>
+        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="1" aliases="none">
+          <maml:name>Answer</maml:name>
+          <maml:description>
+            <maml:para>The correct answer to compare the guess against.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+          <dev:type>
+            <maml:name>String</maml:name>
+            <maml:uri />
+          </dev:type>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="0" aliases="none">
+        <maml:name>Guess</maml:name>
+        <maml:description>
+          <maml:para>The five-letter word that represents the player's guess to be scored against the target answer.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+      <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="1" aliases="none">
+        <maml:name>Answer</maml:name>
+        <maml:description>
+          <maml:para>The five-letter word that represents the correct answer for comparison and scoring.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>None</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>This cmdlet does not accept pipeline input.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>System.Object</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns the Wordle scoring result showing which letters are in the correct position (Green), correct letter in wrong position (Yellow), or not in the answer (Grey).</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <command:examples>
+      <command:example>
+        <maml:title>Example 1: Score a guess</maml:title>
+        <dev:code>PS C:\&gt; Get-WordScore "slate" "stare"</dev:code>
+        <dev:remarks>
+          <maml:para>Scores the guess "slate" against the answer "stare", showing which letters match positions and which are in the word but wrong position.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 2: Perfect match</maml:title>
+        <dev:code>PS C:\&gt; Get-WordScore "crane" "crane"</dev:code>
+        <dev:remarks>
+          <maml:para>Scores a perfect match where the guess exactly matches the answer, resulting in all green letters.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Start-Autoplay</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>Start-WordleAnalysis</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+
+  <command:command xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" xmlns:MSHelp="http://msdn.microsoft.com/mshelp">
+    <command:details>
+      <command:name>Get-WordsContainingLetter</command:name>
+      <command:verb>Get</command:verb>
+      <command:noun>WordsContainingLetter</command:noun>
+      <maml:description>
+        <maml:para>Retrieves all words from the Wordle word list that contain a specified letter.</maml:para>
+      </maml:description>
+    </command:details>
+    <maml:description>
+      <maml:para>The Get-WordsContainingLetter cmdlet searches through the Wordle word list and returns all words that contain the specified letter in any position.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Get-WordsContainingLetter</maml:name>
+        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+          <maml:name>Letter</maml:name>
+          <maml:description>
+            <maml:para>The letter to search for in the word list.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+          <dev:type>
+            <maml:name>String</maml:name>
+            <maml:uri />
+          </dev:type>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
+        <maml:name>Letter</maml:name>
+        <maml:description>
+          <maml:para>The single letter to search for within the Wordle word list. All words containing this letter in any position will be returned.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>None</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>This cmdlet does not accept pipeline input.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>System.Object</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns a collection of words that contain the specified letter.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <command:examples>
+      <command:example>
+        <maml:title>Example 1: Find words containing 'Q'</maml:title>
+        <dev:code>PS C:\&gt; Get-WordsContainingLetter -Letter "q"</dev:code>
+        <dev:remarks>
+          <maml:para>Returns all words in the Wordle word list that contain the letter 'q' in any position.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 2: Find words with vowel 'A'</maml:title>
+        <dev:code>PS C:\&gt; Get-WordsContainingLetter -Letter "a"</dev:code>
+        <dev:remarks>
+          <maml:para>Returns all words containing the letter 'a', which can be useful for analyzing vowel distribution.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Get-BestStartWord</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>Start-WordleAnalysis</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+
+  <command:command xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" xmlns:MSHelp="http://msdn.microsoft.com/mshelp">
+    <command:details>
+      <command:name>Get-BestStartWord</command:name>
+      <command:verb>Get</command:verb>
+      <command:noun>BestStartWord</command:noun>
+      <maml:description>
+        <maml:para>Determines the best starting word for a Wordle game given a specific answer.</maml:para>
+      </maml:description>
+    </command:details>
+    <maml:description>
+      <maml:para>The Get-BestStartWord cmdlet analyzes potential starting words and determines which would be most effective for solving a Wordle puzzle with a known answer. It can work with a default list of starting words or a custom set provided by the user.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Get-BestStartWord</maml:name>
+        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="0" aliases="none">
+          <maml:name>Answer</maml:name>
+          <maml:description>
+            <maml:para>The target answer for which to find the best starting word.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+          <dev:type>
+            <maml:name>String</maml:name>
+            <maml:uri />
+          </dev:type>
+        </command:parameter>
+        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="1" aliases="none">
+          <maml:name>StartWords</maml:name>
+          <maml:description>
+            <maml:para>An optional array of candidate starting words to evaluate. If not provided, uses the default starting word list.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="false">String[]</command:parameterValue>
+          <dev:type>
+            <maml:name>String[]</maml:name>
+            <maml:uri />
+          </dev:type>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="0" aliases="none">
+        <maml:name>Answer</maml:name>
+        <maml:description>
+          <maml:para>The five-letter word that represents the target answer for the Wordle puzzle. The cmdlet will determine which starting word would be most effective for solving this specific puzzle.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="1" aliases="none">
+        <maml:name>StartWords</maml:name>
+        <maml:description>
+          <maml:para>An array of candidate five-letter words to evaluate as potential starting words. If not provided, the cmdlet will use the default starting word list included with WordleSharp.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="false">String[]</command:parameterValue>
+        <dev:type>
+          <maml:name>String[]</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>None</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>This cmdlet does not accept pipeline input.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>System.Object</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns the best starting word(s) for the given answer, potentially with scoring information.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <command:examples>
+      <command:example>
+        <maml:title>Example 1: Find best start word for specific answer</maml:title>
+        <dev:code>PS C:\&gt; Get-BestStartWord "crane"</dev:code>
+        <dev:remarks>
+          <maml:para>Determines the best starting word from the default list for solving a puzzle where "crane" is the answer.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>Example 2: Evaluate custom starting words</maml:title>
+        <dev:code>PS C:\&gt; Get-BestStartWord "house" @("slate", "stare", "audio", "adieu")</dev:code>
+        <dev:remarks>
+          <maml:para>Evaluates the provided custom list of starting words to find the best one for solving a puzzle where "house" is the answer.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Start-WordleAnalysis</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>Get-WordsContainingLetter</maml:linkText>
+        <maml:uri></maml:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+</helpItems>
