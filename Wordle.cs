@@ -355,7 +355,9 @@ public class Wordle
     {
         var rx = new Regex("[^a-z]");
         return rx.Replace(entry, "");
-    }    private static IEnumerable<string> LoadWordList()
+    }
+
+    private static IEnumerable<string> LoadWordList()
     {
         string? currentPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
         if (currentPath == null)
