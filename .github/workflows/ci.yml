@@ -1,0 +1,125 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, 'feature/*' ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  CONFIGURATION: Release
+
+jobs:
+  build-test:
+    name: Build and Test
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Setup PowerShell module cache
+      id: cacher
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.local/share/powershell/Modules
+          ~/Documents/PowerShell/Modules
+        key: ${{ runner.os }}-PowerShell-Modules-${{ hashFiles('**/ci.yml') }}
+    
+    - name: Install required PowerShell modules
+      if: steps.cacher.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        Set-PSRepository PSGallery -InstallationPolicy Trusted
+        Install-Module Pester, PSScriptAnalyzer -ErrorAction Stop -Force
+    
+    - name: Restore dependencies
+      run: dotnet restore WordleSharp.sln
+    
+    - name: Build
+      run: dotnet build WordleSharp.sln --configuration ${{ env.CONFIGURATION }} --no-restore
+    
+    - name: Test
+      run: dotnet test WordleSharp.Tests/WordleSharp.Tests.csproj --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --logger trx --results-directory "TestResults-${{ matrix.os }}"
+    
+    - name: Test PowerShell module functionality
+      shell: pwsh
+      run: |
+        # Import the built module
+        $modulePath = "bin/${{ env.CONFIGURATION }}/net8.0/WordleSharp.dll"
+        if (Test-Path $modulePath) {
+          Import-Module $modulePath -Force
+          
+          # Verify module loaded
+          $module = Get-Module WordleSharp
+          if ($module) {
+            Write-Output "✅ Module loaded successfully"
+            Write-Output "Module version: $($module.Version)"
+            
+            # List available commands
+            $commands = Get-Command -Module WordleSharp
+            Write-Output "Available commands ($($commands.Count)):"
+            $commands | ForEach-Object { Write-Output "  - $($_.Name) ($($_.CommandType))" }
+          } else {
+            Write-Error "❌ Failed to load WordleSharp module"
+          }
+        } else {
+          Write-Warning "⚠️ Module DLL not found at $modulePath"
+        }
+    
+    - name: Run PSScriptAnalyzer (if PowerShell files exist)
+      shell: pwsh
+      run: |
+        $psFiles = Get-ChildItem -Path . -Filter "*.ps1" -Recurse -ErrorAction SilentlyContinue
+        if ($psFiles) {
+          Write-Output "Found $($psFiles.Count) PowerShell files to analyze"
+          Invoke-ScriptAnalyzer -Path $psFiles -Recurse -Outvariable issues
+          
+          $errors = $issues.Where({$_.Severity -eq 'Error'})
+          $warnings = $issues.Where({$_.Severity -eq 'Warning'})
+          
+          Write-Output "PSScriptAnalyzer Results:"
+          Write-Output "  Errors: $($errors.Count)"
+          Write-Output "  Warnings: $($warnings.Count)"
+          
+          if ($errors) {
+            $errors | ForEach-Object {
+              Write-Output "❌ ERROR: $($_.Message) at $($_.ScriptName):$($_.Line)"
+            }
+            throw "PSScriptAnalyzer found $($errors.Count) error(s)"
+          }
+          
+          if ($warnings) {
+            $warnings | ForEach-Object {
+              Write-Output "⚠️ WARNING: $($_.Message) at $($_.ScriptName):$($_.Line)"
+            }
+          }
+        } else {
+          Write-Output "No PowerShell script files found to analyze"
+        }
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}
+        path: TestResults-${{ matrix.os }}/**
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      if: matrix.os == 'windows-latest'
+      with:
+        name: build-output
+        path: |
+          bin/${{ env.CONFIGURATION }}/net8.0/
+          WordleSharp.psd1
