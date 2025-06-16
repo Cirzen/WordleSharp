@@ -25,22 +25,32 @@ public class StartWordleAnalysis : PSCmdlet
     public StartWordleAnalysis()
     {
 
-    }    protected override void EndProcessing()
+    }
+
+    protected override void EndProcessing()
     {
         base.EndProcessing();
         var wordle = new Wordle(Threshold)
         {
             DisplayCountOnly = CountOnly.ToBool()
         };
-        
-        // Create the calculator using the factory
+
         var calculator = CalculatorFactory.CreateCalculator(Calculator, MaxDegreeOfParallelism);
         wordle.SetNextWordCalculator(calculator);
-        
-        // Create PowerShell progress updater for analysis
-        var progressUpdater = new PowerShellProgressUpdater(this, "Analyzing Wordle", 1);
-        
-        var result = wordle.Analyse(progressUpdater).GetAwaiter().GetResult();
+        using var progressUpdater = new PowerShellProgressUpdater(this, "Analyzing Wordle", 1);
+        var analysisTask = wordle.Analyse(progressUpdater);
+
+        var spinWait = new SpinWait();
+        while (!analysisTask.IsCompleted)
+        {
+            progressUpdater.ProcessQueuedUpdates();
+            spinWait.SpinOnce();
+        }
+
+        progressUpdater.ProcessQueuedUpdates();
+
+        var result = analysisTask.GetAwaiter().GetResult();
+
         WriteObject(result);
         if (!CountOnly)
         {
