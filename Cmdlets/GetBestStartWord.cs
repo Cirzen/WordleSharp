@@ -18,6 +18,6 @@ public class GetBestStartWord : PSCmdlet
         var wordle = new Wordle();
         wordle.SetNextWordCalculator(new CountReductionCalculator());
 
-        WriteObject(wordle.GetBestStartWord(Answer, StartWords ?? wordle.startWords));
+        WriteObject(wordle.GetBestStartWord(Answer, StartWords ?? wordle.StartWords));
     }
 }

@@ -20,6 +20,12 @@ public class Wordle
     internal IEnumerable<string> startWords;
     internal int turnCount;
     public bool DisplayCountOnly;
+    
+    /// <summary>
+    /// Gets the start words collection used for analysis.
+    /// </summary>
+    public IEnumerable<string> StartWords => startWords;
+    
     private readonly int threshold;
     private INextWordCalculator calculator;
     private string knownAnswer;
@@ -349,19 +355,21 @@ public class Wordle
     {
         var rx = new Regex("[^a-z]");
         return rx.Replace(entry, "");
-    }
-
-    private static IEnumerable<string> LoadWordList()
+    }    private static IEnumerable<string> LoadWordList()
     {
-        string currentPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        string[] text = File.ReadAllLines(Path.Join(currentPath, "\\WordLists\\Answers.txt"));
+        string? currentPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        if (currentPath == null)
+            throw new InvalidOperationException("Unable to determine application directory");
+            
+        string[] text = File.ReadAllLines(Path.Combine(currentPath, "WordLists", "Answers.txt"));
         return text;
-    }
-
-    private static IEnumerable<string> LoadStartWords()
+    }    private static IEnumerable<string> LoadStartWords()
     {
-        string currentPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        string[] text = File.ReadAllLines(Path.Join(currentPath, "\\WordLists\\StartWords.txt"));
+        string? currentPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        if (currentPath == null)
+            throw new InvalidOperationException("Unable to determine application directory");
+            
+        string[] text = File.ReadAllLines(Path.Combine(currentPath, "WordLists", "StartWords.txt"));
         return text;
     }
 
