@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [ main ]
   release:
-    types: [ created ]
+    types: [ created, published ]
 
 env:
   DOTNET_VERSION: '8.0.x'
@@ -83,6 +83,9 @@ jobs:
         path: |
           bin/Release/
           WordleSharp.psd1
+    
+    - name: Dump GitHub context
+      run: echo "${{ toJson(github) }}"  
 
   version-and-publish:
     name: Version and Publish to PowerShell Gallery
