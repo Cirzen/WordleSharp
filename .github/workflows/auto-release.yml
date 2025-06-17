@@ -12,7 +12,7 @@ jobs:
   auto-release:
     name: Auto Release
     runs-on: windows-latest
-    if: "!contains(github.event.head_commit.message, '[skip release]')"
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
     
     steps:
     - name: Checkout repository
