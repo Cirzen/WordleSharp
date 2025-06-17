@@ -1,9 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using WordleSharp.ProgressReporting;
+namespace WordleSharp.Calculators;
 
-namespace WordleSharp.Calculators
+public interface INextWordCalculator
 {
-    public interface INextWordCalculator
-    {
-        public IEnumerable<string> CalculateWord(IEnumerable<string> wordList);
-    }
+    /// <summary>
+    /// Calculates the best next word using the current calculator
+    /// </summary>
+    /// <param name="wordle">The Wordle object</param>
+    /// <returns></returns>
+    public IEnumerable<string> CalculateWord(Wordle wordle);
+
+    public Task<IEnumerable<string>> CalculateWordAsync(Wordle wordle, IProgressUpdater? progressUpdater = null);
 }

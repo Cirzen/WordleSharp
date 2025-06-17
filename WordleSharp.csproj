@@ -2,24 +2,40 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Management.Automation" Version="7.2.6" />
     <PackageReference Include="ConsoleTables" Version="2.4.2" />
   </ItemGroup>
-
   <ItemGroup>
-    <Folder Include="Calculators\" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <None Update="WordleSharp.psd1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>    <None Update="en-US\WordleSharp.dll-Help.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="WordLists\Answers.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="WordLists\StartWords.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <!-- Ensure test files are not compiled with the main project -->
+  <ItemGroup>
+    <Compile Remove="WordleSharp.Tests\\**\\*.cs" />
+    <None Include="WordleSharp.Tests\\**\\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="WordleSharp.Tests" />
   </ItemGroup>
 
 </Project>
