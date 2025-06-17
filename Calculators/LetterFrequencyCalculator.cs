@@ -27,7 +27,7 @@ public class LetterFrequencyCalculator : INextWordCalculator
             int sum = word
                 .ToCharArray()
                 .Distinct()
-                .Sum(letter => characterFrequency[letter]);
+                .Sum(letter => characterFrequency.ContainsKey(letter) ? characterFrequency[letter] : 0);
             wordScores[word] = sum;
         }
 

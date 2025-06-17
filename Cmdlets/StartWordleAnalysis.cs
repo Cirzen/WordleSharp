@@ -1,5 +1,6 @@
 ﻿using System.Management.Automation;
 using WordleSharp.Calculators;
+using WordleSharp.ProgressReporting;
 
 namespace WordleSharp.Cmdlets;
 
@@ -33,12 +34,23 @@ public class StartWordleAnalysis : PSCmdlet
         {
             DisplayCountOnly = CountOnly.ToBool()
         };
-        
-        // Create the calculator using the factory
+
         var calculator = CalculatorFactory.CreateCalculator(Calculator, MaxDegreeOfParallelism);
         wordle.SetNextWordCalculator(calculator);
-        
-        var result = wordle.Analyse().GetAwaiter().GetResult();
+        using var progressUpdater = new PowerShellProgressUpdater(this, "Analyzing Wordle", 1);
+        var analysisTask = wordle.Analyse(progressUpdater);
+
+        var spinWait = new SpinWait();
+        while (!analysisTask.IsCompleted)
+        {
+            progressUpdater.ProcessQueuedUpdates();
+            spinWait.SpinOnce();
+        }
+
+        progressUpdater.ProcessQueuedUpdates();
+
+        var result = analysisTask.GetAwaiter().GetResult();
+
         WriteObject(result);
         if (!CountOnly)
         {
