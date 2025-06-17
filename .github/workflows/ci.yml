@@ -42,12 +42,34 @@ jobs:
       run: |
         Set-PSRepository PSGallery -InstallationPolicy Trusted
         Install-Module Pester, PSScriptAnalyzer -ErrorAction Stop -Force
-    
     - name: Restore dependencies
       run: dotnet restore WordleSharp.sln
     
     - name: Build
-      run: dotnet build WordleSharp.sln --configuration ${{ env.CONFIGURATION }} --no-restore
+      id: build
+      shell: pwsh
+      run: |
+        # Build the solution
+        dotnet build WordleSharp.sln --configuration ${{ env.CONFIGURATION }} --no-restore
+        
+        # Determine and verify output path
+        $outputPath = "bin/${{ env.CONFIGURATION }}/net8.0"
+        $dllPath = Join-Path $outputPath "WordleSharp.dll"
+        
+        if (Test-Path $outputPath) {
+          Write-Output "✅ Build output directory found: $outputPath"
+          if (Test-Path $dllPath) {
+            Write-Output "✅ WordleSharp.dll found at: $dllPath"
+            # Export the paths for use in subsequent steps
+            Add-Content -Path $env:GITHUB_ENV -Value "MODULE_DLL_PATH=$dllPath"            Add-Content -Path $env:GITHUB_ENV -Value "BUILD_OUTPUT_PATH=$outputPath"
+          } else {
+            Write-Error "❌ WordleSharp.dll not found in output directory"
+            exit 1
+          }
+        } else {
+          Write-Error "❌ Build output directory not found: $outputPath"
+          exit 1
+        }
     
     - name: Test
       run: dotnet test WordleSharp.Tests/WordleSharp.Tests.csproj --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --logger trx --results-directory "TestResults-${{ matrix.os }}"
@@ -55,8 +77,8 @@ jobs:
     - name: Test PowerShell module functionality
       shell: pwsh
       run: |
-        # Import the built module
-        $modulePath = "bin/${{ env.CONFIGURATION }}/net8.0/WordleSharp.dll"
+        # Import the built module using the verified path from build step
+        $modulePath = "${{ env.MODULE_DLL_PATH }}"
         if (Test-Path $modulePath) {
           Import-Module $modulePath -Force
           
