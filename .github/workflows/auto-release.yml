@@ -150,14 +150,14 @@ jobs:
         }
         
         $releaseNotes = @"
-## What's Changed
+        ## What's Changed
 
-### $($bumpType.ToUpper()) Release: $currentVersion → $newVersion
+        ### $($bumpType.ToUpper()) Release: $currentVersion → $newVersion
 
-$($commits -join "`n")
+        $($commits -join "`n")
 
-**Full Changelog**: https://github.com/${{ github.repository }}/compare/$lastTag...${{ steps.version.outputs.tag-name }}
-"@
+        **Full Changelog**: https://github.com/${{ github.repository }}/compare/$lastTag...${{ steps.version.outputs.tag-name }}
+        "@
 
         # Save to file for GitHub release
         $releaseNotes | Out-File -FilePath "release-notes.md" -Encoding UTF8
