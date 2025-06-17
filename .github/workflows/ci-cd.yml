@@ -1,0 +1,213 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  CONFIGURATION: Release
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for versioning
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Setup PowerShell module cache
+      id: cacher
+      uses: actions/cache@v4
+      with:
+        path: "~/.local/share/powershell/Modules"
+        key: ${{ runner.os }}-PowerShell-Modules
+    
+    - name: Install required PowerShell modules
+      if: steps.cacher.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        Set-PSRepository PSGallery -InstallationPolicy Trusted
+        Install-Module Pester, PSScriptAnalyzer -ErrorAction Stop
+    
+    - name: Restore NuGet packages
+      run: dotnet restore WordleSharp.sln
+    
+    - name: Build solution
+      run: dotnet build WordleSharp.sln --configuration ${{ env.CONFIGURATION }} --no-restore
+    
+    - name: Run .NET tests
+      run: dotnet test WordleSharp.Tests/WordleSharp.Tests.csproj --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+    
+    - name: Run PSScriptAnalyzer
+      shell: pwsh
+      run: |
+        # Analyze PowerShell files if any exist
+        $psFiles = Get-ChildItem -Path . -Filter "*.ps1" -Recurse
+        if ($psFiles) {
+          $psFiles | Invoke-ScriptAnalyzer -Recurse -Outvariable issues
+          $errors = $issues.Where({$_.Severity -eq 'Error'})
+          $warnings = $issues.Where({$_.Severity -eq 'Warning'})
+          if ($errors) {
+              Write-Error "There were $($errors.Count) errors and $($warnings.Count) warnings total." -ErrorAction Stop
+          } else {
+              Write-Output "There were $($errors.Count) errors and $($warnings.Count) warnings total."
+          }
+        } else {
+          Write-Output "No PowerShell files found to analyze."
+        }
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          coverage/
+          TestResults/
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          bin/Release/
+          WordleSharp.psd1
+
+  version-and-publish:
+    name: Version and Publish to PowerShell Gallery
+    needs: build-and-test
+    runs-on: windows-latest
+    if: github.event_name == 'release' && github.event.action == 'created'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-artifacts
+        path: ./artifacts
+    
+    - name: Extract version from release tag
+      shell: pwsh
+      run: |
+        $version = "${{ github.event.release.tag_name }}" -replace '^v', ''
+        echo "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+        Write-Output "Release version: $version"
+    
+    - name: Update module version
+      shell: pwsh
+      run: |
+        $manifestPath = "WordleSharp.psd1"
+        $content = Get-Content $manifestPath -Raw
+        $version = $env:RELEASE_VERSION
+        
+        # Update ModuleVersion
+        $content = $content -replace "ModuleVersion\s*=\s*'[^']*'", "ModuleVersion = '$version'"
+        
+        # Update assembly version in the manifest if present
+        if ($content -match "AssemblyVersion\s*=\s*'[^']*'") {
+            $content = $content -replace "AssemblyVersion\s*=\s*'[^']*'", "AssemblyVersion = '$version'"
+        }
+        
+        Set-Content -Path $manifestPath -Value $content -Encoding UTF8
+        Write-Output "Updated module version to $version"
+        
+        # Show the changes
+        Write-Output "Updated manifest content:"
+        Get-Content $manifestPath | Select-String -Pattern "ModuleVersion|AssemblyVersion"
+    
+    - name: Build for release
+      run: |
+        dotnet restore WordleSharp.sln
+        dotnet build WordleSharp.sln --configuration ${{ env.CONFIGURATION }} --no-restore
+    
+    - name: Prepare module for publishing
+      shell: pwsh
+      run: |
+        $publishDir = "publish/WordleSharp"
+        New-Item -ItemType Directory -Path $publishDir -Force
+        
+        # Copy the built DLL and dependencies
+        Copy-Item "bin/Release/net8.0/WordleSharp.dll" -Destination $publishDir
+        Copy-Item "bin/Release/net8.0/WordleSharp.psd1" -Destination $publishDir
+        
+        # Copy help files
+        if (Test-Path "en-US") {
+            Copy-Item "en-US" -Destination $publishDir -Recurse
+        }
+        
+        # Copy word lists
+        if (Test-Path "WordLists") {
+            Copy-Item "WordLists" -Destination $publishDir -Recurse
+        }
+        
+        # Copy dependencies that aren't part of PowerShell/Windows
+        $dependencies = @(
+            "ConsoleTables.dll"
+        )
+        
+        foreach ($dep in $dependencies) {
+            $depPath = "bin/Release/net8.0/$dep"
+            if (Test-Path $depPath) {
+                Copy-Item $depPath -Destination $publishDir
+            }
+        }
+        
+        Write-Output "Module prepared in: $publishDir"
+        Get-ChildItem $publishDir -Recurse
+    
+    - name: Test module import
+      shell: pwsh
+      run: |
+        $publishDir = "publish/WordleSharp"
+        Import-Module "$publishDir/WordleSharp.psd1" -Force
+        Get-Module WordleSharp
+        
+        # Test that cmdlets are available
+        $commands = Get-Command -Module WordleSharp
+        Write-Output "Available commands:"
+        $commands | ForEach-Object { Write-Output "  - $($_.Name)" }
+        
+        if ($commands.Count -eq 0) {
+            throw "No commands found in module!"
+        }
+    
+    - name: Publish to PowerShell Gallery
+      shell: pwsh
+      env:
+        NUGET_KEY: ${{ secrets.POWERSHELL_GALLERY_API_KEY }}
+      run: |
+        if (-not $env:NUGET_KEY) {
+            throw "PowerShell Gallery API key not found. Please add POWERSHELL_GALLERY_API_KEY to repository secrets."
+        }
+        
+        $publishDir = "publish/WordleSharp"
+        
+        # Set PSGallery as trusted
+        Set-PSRepository PSGallery -InstallationPolicy Trusted
+        
+        # Publish the module
+        Write-Output "Publishing module to PowerShell Gallery..."
+        Publish-Module -Path $publishDir -NuGetApiKey $env:NUGET_KEY -Verbose -WhatIf:$false
+        
+        Write-Output "Successfully published WordleSharp version $env:RELEASE_VERSION to PowerShell Gallery!"

@@ -1,0 +1,232 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  CONFIGURATION: Release
+
+jobs:
+  auto-release:
+    name: Auto Release
+    runs-on: windows-latest
+    if: "!contains(github.event.head_commit.message, '[skip release]')"
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Setup PowerShell module cache
+      id: cacher
+      uses: actions/cache@v4
+      with:
+        path: "~/.local/share/powershell/Modules"
+        key: ${{ runner.os }}-PowerShell-Modules
+    
+    - name: Install required PowerShell modules
+      if: steps.cacher.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        Set-PSRepository PSGallery -InstallationPolicy Trusted
+        Install-Module Pester, PSScriptAnalyzer -ErrorAction Stop
+    
+    - name: Build and test
+      shell: pwsh
+      run: |
+        Write-Host "🔧 Building and testing before release..." -ForegroundColor Cyan
+        
+        # Restore and build
+        dotnet restore WordleSharp.sln
+        if ($LASTEXITCODE -ne 0) { throw "Failed to restore packages" }
+        
+        dotnet build WordleSharp.sln --configuration ${{ env.CONFIGURATION }} --no-restore
+        if ($LASTEXITCODE -ne 0) { throw "Build failed" }
+        
+        # Run tests
+        dotnet test WordleSharp.Tests/WordleSharp.Tests.csproj --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal
+        if ($LASTEXITCODE -ne 0) { throw "Tests failed" }
+        
+        Write-Host "✅ Build and tests passed" -ForegroundColor Green
+    
+    - name: Determine next version
+      id: version
+      shell: pwsh
+      run: |
+        Write-Host "🔍 Determining next version..." -ForegroundColor Cyan
+        
+        # Get current version from manifest
+        $manifestPath = "WordleSharp.psd1"
+        $content = Get-Content $manifestPath -Raw
+        
+        if ($content -match "ModuleVersion\s*=\s*'([^']*)'") {
+          $currentVersion = $matches[1]
+          Write-Host "Current version: $currentVersion" -ForegroundColor White
+          
+          # Parse version
+          if ($currentVersion -match '^(\d+)\.(\d+)\.(\d+)$') {
+            $major = [int]$matches[1]
+            $minor = [int]$matches[2]
+            $patch = [int]$matches[3]
+            
+            # Check commit message for version hints
+            $commitMessage = "${{ github.event.head_commit.message }}"
+            Write-Host "Commit message: $commitMessage" -ForegroundColor White
+            
+            if ($commitMessage -match '\[major\]' -or $commitMessage -match 'BREAKING CHANGE') {
+              $major++
+              $minor = 0
+              $patch = 0
+              $bumpType = "major"
+            } elseif ($commitMessage -match '\[patch\]' -or $commitMessage -match '\bfix\b' -or $commitMessage -match '\bbug\b') {
+              $patch++
+              $bumpType = "patch"
+            } else {
+              # Default: minor bump
+              $minor++
+              $patch = 0
+              $bumpType = "minor"
+            }
+            
+            $newVersion = "$major.$minor.$patch"
+            $tagName = "v$newVersion"
+            
+            Write-Host "New version: $newVersion (${bumpType} bump)" -ForegroundColor Green
+            
+            # Set outputs
+            echo "current-version=$currentVersion" >> $env:GITHUB_OUTPUT
+            echo "new-version=$newVersion" >> $env:GITHUB_OUTPUT
+            echo "tag-name=$tagName" >> $env:GITHUB_OUTPUT
+            echo "bump-type=$bumpType" >> $env:GITHUB_OUTPUT
+          } else {
+            throw "Invalid current version format: $currentVersion"
+          }
+        } else {
+          throw "Could not find ModuleVersion in manifest"
+        }
+    
+    - name: Check if tag already exists
+      shell: pwsh
+      run: |
+        $tagName = "${{ steps.version.outputs.tag-name }}"
+        Write-Host "Checking if tag $tagName already exists..." -ForegroundColor Cyan
+        
+        $existingTag = git tag -l $tagName
+        if ($existingTag) {
+          Write-Host "Tag $tagName already exists. Skipping release." -ForegroundColor Yellow
+          echo "SKIP_RELEASE=true" >> $env:GITHUB_ENV
+        } else {
+          Write-Host "Tag $tagName is available" -ForegroundColor Green
+          echo "SKIP_RELEASE=false" >> $env:GITHUB_ENV
+        }
+    
+    - name: Generate release notes
+      id: release-notes
+      if: env.SKIP_RELEASE == 'false'
+      shell: pwsh
+      run: |
+        Write-Host "📝 Generating release notes..." -ForegroundColor Cyan
+        
+        $currentVersion = "${{ steps.version.outputs.current-version }}"
+        $newVersion = "${{ steps.version.outputs.new-version }}"
+        $bumpType = "${{ steps.version.outputs.bump-type }}"
+        
+        # Get commits since last version tag
+        $lastTag = git describe --tags --abbrev=0 2>$null
+        if ($lastTag) {
+          $commits = git log --oneline "${lastTag}..HEAD" --pretty=format:"- %s"
+        } else {
+          # If no previous tags, get commits from beginning
+          $commits = git log --oneline --pretty=format:"- %s"
+        }
+        
+        $releaseNotes = @"
+        ## What's Changed
+
+        ### $($bumpType.ToUpper()) Release: $currentVersion → $newVersion
+
+        $($commits -join "`n")
+
+        **Full Changelog**: https://github.com/${{ github.repository }}/compare/$lastTag...${{ steps.version.outputs.tag-name }}
+        "@
+
+        # Save to file for GitHub release
+        $releaseNotes | Out-File -FilePath "release-notes.md" -Encoding UTF8
+        
+        Write-Host "Release notes generated:" -ForegroundColor Green
+        Write-Host $releaseNotes -ForegroundColor White
+        
+        # Set output (escape for GitHub Actions)
+        $escapedNotes = $releaseNotes -replace "`r`n", "%0A" -replace "`n", "%0A" -replace '"', '\"'
+        echo "notes=$escapedNotes" >> $env:GITHUB_OUTPUT
+    
+    - name: Create GitHub release
+      if: env.SKIP_RELEASE == 'false'
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $tagName = "${{ steps.version.outputs.tag-name }}"
+        $newVersion = "${{ steps.version.outputs.new-version }}"
+        $bumpType = "${{ steps.version.outputs.bump-type }}"
+        
+        Write-Host "🚀 Creating GitHub release $tagName..." -ForegroundColor Cyan
+        
+        # Install GitHub CLI if not available
+        if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+          Write-Host "Installing GitHub CLI..." -ForegroundColor Yellow
+          winget install --id GitHub.cli
+        }
+        
+        # Create the release
+        $title = "Release $newVersion"
+        gh release create $tagName --title $title --notes-file "release-notes.md" --target main
+        
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "✅ Successfully created release $tagName" -ForegroundColor Green
+          Write-Host "🎯 This will trigger the CI/CD pipeline to publish to PowerShell Gallery" -ForegroundColor Cyan
+        } else {
+          throw "Failed to create GitHub release"
+        }
+    
+    - name: Summary
+      if: always()
+      shell: pwsh
+      run: |
+        Write-Host ""
+        Write-Host "📊 Auto Release Summary" -ForegroundColor Cyan
+        Write-Host "======================" -ForegroundColor Cyan
+        
+        if ($env:SKIP_RELEASE -eq 'true') {
+          Write-Host "❌ Release skipped - tag already exists" -ForegroundColor Yellow
+        } else {
+          $newVersion = "${{ steps.version.outputs.new-version }}"
+          $tagName = "${{ steps.version.outputs.tag-name }}"
+          $bumpType = "${{ steps.version.outputs.bump-type }}"
+          
+          Write-Host "✅ Auto release completed successfully!" -ForegroundColor Green
+          Write-Host "   Version: ${{ steps.version.outputs.current-version }} → $newVersion" -ForegroundColor White
+          Write-Host "   Tag: $tagName" -ForegroundColor White
+          Write-Host "   Bump type: $bumpType" -ForegroundColor White
+          Write-Host ""
+          Write-Host "🔄 Next steps:" -ForegroundColor Cyan
+          Write-Host "   • CI/CD pipeline will now run automatically" -ForegroundColor White
+          Write-Host "   • Module will be published to PowerShell Gallery" -ForegroundColor White
+          Write-Host "   • Check the Actions tab for progress" -ForegroundColor White
+        }
+        
+        Write-Host ""
+        Write-Host "💡 Tips for future commits:" -ForegroundColor Cyan
+        Write-Host "   • Add [major] for breaking changes" -ForegroundColor White
+        Write-Host "   • Add [patch] for bug fixes" -ForegroundColor White
+        Write-Host "   • Add [skip release] to skip auto-release" -ForegroundColor White
+        Write-Host "   • Default behavior: minor version bump" -ForegroundColor White
