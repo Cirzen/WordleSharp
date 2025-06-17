@@ -83,7 +83,7 @@ jobs:
         $psFiles = Get-ChildItem -Path . -Filter "*.ps1" -Recurse -ErrorAction SilentlyContinue
         if ($psFiles) {
           Write-Output "Found $($psFiles.Count) PowerShell files to analyze"
-          Invoke-ScriptAnalyzer -Path $psFiles -Recurse -Outvariable issues
+          $psFiles | Invoke-ScriptAnalyzer -Recurse -Outvariable issues
           
           $errors = $issues.Where({$_.Severity -eq 'Error'})
           $warnings = $issues.Where({$_.Severity -eq 'Warning'})
