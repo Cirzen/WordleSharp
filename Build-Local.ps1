@@ -27,11 +27,6 @@ function Write-Success {
     Write-Host "✅ $Message" -ForegroundColor Green
 }
 
-function Write-Warning {
-    param([string]$Message)
-    Write-Host "⚠️ $Message" -ForegroundColor Yellow
-}
-
 try {
     # Step 1: Restore dependencies
     Write-Step "Restoring NuGet packages..."
