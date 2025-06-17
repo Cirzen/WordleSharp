@@ -30,11 +30,6 @@ function Write-Success {
     Write-Host "✅ $Message" -ForegroundColor Green
 }
 
-function Write-Warning {
-    param([string]$Message)
-    Write-Host "⚠️ $Message" -ForegroundColor Yellow
-}
-
 try {
     # Check if we're in a git repository
     if (-not (Test-Path ".git")) {
@@ -155,7 +150,7 @@ try {
     Write-Host ""
     Write-Host "💡 For future releases, consider using automatic releases:" -ForegroundColor Cyan
     Write-Host "   Just merge to main with proper commit messages!" -ForegroundColor White
-    Write-Host "   • 'Add feature' → minor bump" -ForegroundColor White
+    Write-Host "   • 'Add feature' → minor bump (default)" -ForegroundColor White
     Write-Host "   • 'Fix bug [patch]' → patch bump" -ForegroundColor White
     Write-Host "   • 'Breaking change [major]' → major bump" -ForegroundColor White
     Write-Host ""

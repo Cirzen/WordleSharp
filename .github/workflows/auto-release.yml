@@ -12,7 +12,7 @@ jobs:
   auto-release:
     name: Auto Release
     runs-on: windows-latest
-    if: "!contains(github.event.head_commit.message, '[skip release]')"
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
     
     steps:
     - name: Checkout repository
@@ -69,49 +69,61 @@ jobs:
         $content = Get-Content $manifestPath -Raw
         
         if ($content -match "ModuleVersion\s*=\s*'([^']*)'") {
-          $currentVersion = $matches[1]
-          Write-Host "Current version: $currentVersion" -ForegroundColor White
-          
-          # Parse version
-          if ($currentVersion -match '^(\d+)\.(\d+)\.(\d+)$') {
-            $major = [int]$matches[1]
-            $minor = [int]$matches[2]
-            $patch = [int]$matches[3]
+            $currentVersion = $matches[1]
+            Write-Host "Current version: $currentVersion" -ForegroundColor White
             
-            # Check commit message for version hints
-            $commitMessage = "${{ github.event.head_commit.message }}"
-            Write-Host "Commit message: $commitMessage" -ForegroundColor White
-            
-            if ($commitMessage -match '\[major\]' -or $commitMessage -match 'BREAKING CHANGE') {
-              $major++
-              $minor = 0
-              $patch = 0
-              $bumpType = "major"
-            } elseif ($commitMessage -match '\[patch\]' -or $commitMessage -match '\bfix\b' -or $commitMessage -match '\bbug\b') {
-              $patch++
-              $bumpType = "patch"
+            # Parse version
+              # Parse version - support multiple formats but normalize to SemVer
+              $versionParts = $currentVersion.Split('.')
+              
+              if ($versionParts.Count -eq 2) {
+                  # Format: X.Y -> X.Y.0
+                  $major = [int]$versionParts[0]
+                  $minor = [int]$versionParts[1]
+                  $patch = 0
+              } elseif ($versionParts.Count -eq 3) {
+                  # Format: X.Y.Z
+                  $major = [int]$versionParts[0]
+                  $minor = [int]$versionParts[1]
+                  $patch = [int]$versionParts[2]
+              } else {
+                  throw "Invalid version format: $currentVersion. Expected X.Y or X.Y.Z format"
+              }
+              
+              # Check commit message for version hints
+              $commitMessage = "${{ github.event.head_commit.message }}"
+              Write-Host "Commit message: $commitMessage" -ForegroundColor White
+              
+              if ($commitMessage -match '\[major\]' -or $commitMessage -match 'BREAKING CHANGE') {
+                  $major++
+                  $minor = 0
+                  $patch = 0
+                  $bumpType = "major"
+              } elseif ($commitMessage -match '\[patch\]' -or $commitMessage -match '\bfix\b' -or $commitMessage -match '\bbug\b') {
+                  $patch++
+                  $bumpType = "patch"
+              } else {
+                  # Default: minor bump
+                  $minor++
+                  $patch = 0
+                  $bumpType = "minor"
+              }
+              
+              $newVersion = "$major.$minor.$patch"
+              $tagName = "v$newVersion"
+              
+              Write-Host "New version: $newVersion (${bumpType} bump)" -ForegroundColor Green
+              
+              # Set outputs
+              echo "current-version=$currentVersion" >> $env:GITHUB_OUTPUT
+              echo "new-version=$newVersion" >> $env:GITHUB_OUTPUT
+              echo "tag-name=$tagName" >> $env:GITHUB_OUTPUT
+              echo "bump-type=$bumpType" >> $env:GITHUB_OUTPUT
             } else {
-              # Default: minor bump
-              $minor++
-              $patch = 0
-              $bumpType = "minor"
+                throw "Invalid current version format: $currentVersion"
             }
-            
-            $newVersion = "$major.$minor.$patch"
-            $tagName = "v$newVersion"
-            
-            Write-Host "New version: $newVersion (${bumpType} bump)" -ForegroundColor Green
-            
-            # Set outputs
-            echo "current-version=$currentVersion" >> $env:GITHUB_OUTPUT
-            echo "new-version=$newVersion" >> $env:GITHUB_OUTPUT
-            echo "tag-name=$tagName" >> $env:GITHUB_OUTPUT
-            echo "bump-type=$bumpType" >> $env:GITHUB_OUTPUT
-          } else {
-            throw "Invalid current version format: $currentVersion"
-          }
         } else {
-          throw "Could not find ModuleVersion in manifest"
+            throw "Could not find ModuleVersion in manifest"
         }
     
     - name: Check if tag already exists
