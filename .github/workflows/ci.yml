@@ -61,7 +61,8 @@ jobs:
           if (Test-Path $dllPath) {
             Write-Output "✅ WordleSharp.dll found at: $dllPath"
             # Export the paths for use in subsequent steps
-            Add-Content -Path $env:GITHUB_ENV -Value "MODULE_DLL_PATH=$dllPath"            Add-Content -Path $env:GITHUB_ENV -Value "BUILD_OUTPUT_PATH=$outputPath"
+            Add-Content -Path $env:GITHUB_ENV -Value "MODULE_DLL_PATH=$dllPath"
+            Add-Content -Path $env:GITHUB_ENV -Value "BUILD_OUTPUT_PATH=$outputPath"
           } else {
             Write-Error "❌ WordleSharp.dll not found in output directory"
             exit 1
